@@ -106,13 +106,23 @@ namespace FuseAcoImporter
 	public class UXWriter
 	{
 		List<string> lines = new List<string>();
+		string FileName;
+
 		public UXWriter(List<RGBColor> colors, string outClassName)
 		{
+			FileName = outClassName + ".ux";
 			lines.Add("<Panel ux:Class=\"" + outClassName + "\">");
 			foreach (var c in colors) {
 				lines.Add ("\t<float4 ux:Global=\"" + c.Name + "\" ux:Value=\"" + c.HexString() + "\" />");
 			}
 			lines.Add ("</Panel>");
+		}
+
+        public void SaveToFile(string fileName)
+		{
+			if (fileName != null)
+				FileName = fileName;
+				File.WriteAllLines(FileName, lines.ToArray());
 		}
 	}
 
@@ -121,14 +131,32 @@ namespace FuseAcoImporter
 	{
 		public static void Main (string[] args)
 		{
-			/*if (args.Length < 1) {
-			  Console.WriteLine("You need to pass a file as an argument");
-			  return;
-			  }*/
-			var fileName = "C:/Users/Hassel/dev/fuse-aco-importer/FuseAcoImporter/Exploring.aco";
-			var bytes = File.ReadAllBytes (fileName);
-			var aco = new Aco (bytes);
-			var writer = new UXWriter(aco.Colors, "ColorPalette.ux");
+			if (args.Length < 1){
+				Console.Error.WriteLine("No .aco file specified");
+				return;
+			}
+			var fileName = args[0];
+			string outFileName = null;
+			if (args.Length >= 2)
+			{
+				outFileName = args[1];
+			}
+			try
+			{
+				var bytes = File.ReadAllBytes (fileName);
+				var aco = new Aco (bytes);
+				var writer = new UXWriter(aco.Colors, "ColorPalette");
+				writer.SaveToFile(outFileName);
+			}catch(FileNotFoundException fNotFoundExc)
+			{
+				Console.Error.WriteLine("Could not find specified file");
+				return;
+			}
+			catch (Exception e)
+			{
+				Console.Error.WriteLine("An error occured while parsing file");
+				return;
+			}
 		}
 	}
 }
