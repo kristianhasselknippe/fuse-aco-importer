@@ -2,6 +2,8 @@
 
 ## Usage:
 
+```
 FuseAcoImporter <acoFileName> <outFileName (optional)>
+```
 
 Outputs a set of SolidColor resources to outFileName.
