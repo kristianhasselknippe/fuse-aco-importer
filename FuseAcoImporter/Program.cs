@@ -16,7 +16,7 @@ namespace FuseAcoImporter
 			var gb = (byte)(G/256.0);
 			var bb = (byte)(B/256.0);
 			string hex_ = BitConverter.ToString (
-				             new byte[]{ rb, gb, bb });
+												 new byte[]{ rb, gb, bb });
 
 			var hex = hex_.Replace("-", string.Empty);
 			return "#" + hex;
@@ -33,45 +33,73 @@ namespace FuseAcoImporter
 
 	public class Aco
 	{
-		public List<RGBColor> Colors = new List<RGBColor> ();
+		public List<RGBColor> Colors = new List<RGBColor>();
 
 
 		public Aco(byte[] bytes)
 		{
 			/*if (BitConverter.IsLittleEndian)
-				Array.Reverse(bytes);*/
+			  Array.Reverse(bytes);*/
 			//TODO(kristian): check that endianness is ok
-			List<UInt16> words = new List<UInt16>();
+			var words = new UInt16[bytes.Length];
+            var wordCount = 0;
 			for (var i = 0; i < bytes.Length-1; i += 2) {
-				var b = new []{ bytes[i+1], bytes[i] };
-				words.Add (BitConverter.ToUInt16 (b, 0));
+				var b = new byte[2];
+				if (BitConverter.IsLittleEndian)
+				{
+					b[1] = bytes[i];
+					b[0] =  bytes[i+1];
+				}
+				else
+				{
+					b[0] = bytes[i];
+					b[1] =  bytes[i+1];
+				}
+				words[wordCount++] = BitConverter.ToUInt16(b,0);
 			}
-			var version = words [0];
-			var nColors = words [1];
-			var index = 2;
-			int count = 0;
-			while (true) {
-				var space = words [index++];
-				var w = words [index++];
-				var x = words [index++];
-				var y = words [index++];
-				var z = words [index++];
 
-				if (version == 0){
-					Colors.Add (new RGBColor ("Color" + (++count), w, x, y));
-				} else if (version == 1) {
-					index++;
-					var nameLength = words[index++];
-					var name = BitConverter.ToString(bytes, index*2, nameLength);
-					index += nameLength;
-					Colors.Add(new RGBColor(name,w,x,y));
-				} else {
-					throw new Exception("Unrecognized aco version");
+			var version = words[0];
+			var nColors = words[1];
+
+
+			var offset = 2;
+
+			for (var i = 0; i < nColors; i++)
+			{
+				var name = "color" + i;
+				var colorSpace = words[offset++];
+				var w = words[offset++];
+				var x = words[offset++];
+				var y = words[offset++];
+				var z = words[offset++];
+				Colors.Add(new RGBColor(name, w, x, y));
+			}
+
+			version = words[offset++];
+			nColors = words[offset++];
+
+            for (var i = 0; i < nColors; i++)
+			{
+				if (version == 2)
+				{
+					var name = "color" + i;
+					var colorSpace = words[offset++];
+					var w = words[offset++];
+					var x = words[offset++];
+					var y = words[offset++];
+					var z = words[offset++];
+					offset++;
+					var lenPlus1 = words[offset++];
+					name = System.Text.UnicodeEncoding.BigEndianUnicode.GetString(bytes, offset*2,(lenPlus1-1) * 2);
+					offset += lenPlus1;
+
+					Colors.Add(new RGBColor(name, w, x, y));
+
 				}
 
 
+            }
 
-			}
 		}
 	}
 
@@ -94,10 +122,10 @@ namespace FuseAcoImporter
 		public static void Main (string[] args)
 		{
 			/*if (args.Length < 1) {
-				Console.WriteLine("You need to pass a file as an argument");
-				return;
-			}*/
-			var fileName = "/Users/Hassel/Projects/FuseAcoImporter/FuseAcoImporter/Exploring.aco";
+			  Console.WriteLine("You need to pass a file as an argument");
+			  return;
+			  }*/
+			var fileName = "C:/Users/Hassel/dev/fuse-aco-importer/FuseAcoImporter/Exploring.aco";
 			var bytes = File.ReadAllBytes (fileName);
 			var aco = new Aco (bytes);
 			var writer = new UXWriter(aco.Colors, "ColorPalette.ux");
